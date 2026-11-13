@@ -1,0 +1,6 @@
+{
+  "name": "Modulo UI",
+  "description": "Raccolta modulare di componenti React generici e personalizzabili con editor live, ispettore props e anteprima in tempo reale.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
