@@ -1,22 +1,21 @@
 import { useMemo, useState } from 'react';
-import { Check, Code2, Copy, Download, RotateCcw, SlidersHorizontal, Terminal } from 'lucide-react';
+import { Check, Code2, Copy, Download, Paintbrush, RotateCcw } from 'lucide-react';
 import ComponentStrip from './components/ComponentStrip';
 import CodeEditorPane from './components/CodeEditorPane';
-import LivePreviewPane from './components/LivePreviewPane';
-import PropsInspectorPane from './components/PropsInspectorPane';
+import LivePreviewPane, { WorkbenchLayout } from './components/LivePreviewPane';
 import StudioTopBar from './components/StudioTopBar';
 import { COMPONENT_CATALOG } from './library/registry';
-import { ComponentCategory, PropValues } from './types/componentTypes';
+import { ComponentCategory } from './types/componentTypes';
 import { compileTsxComponent } from './utils/liveCompiler';
-import { buildUsageSnippet, syncDefaultPropsInSource } from './utils/propsSync';
 
-type EditorTab = 'code' | 'props' | 'usage';
+type EditorTab = 'tsx' | 'css';
 
 export default function App() {
   const [activeCategory, setActiveCategory] = useState<ComponentCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeId, setActiveId] = useState<string>(COMPONENT_CATALOG[0].id);
-  const [editorTab, setEditorTab] = useState<EditorTab>('code');
+  const [editorTab, setEditorTab] = useState<EditorTab>('tsx');
+  const [layoutMode, setLayoutMode] = useState<WorkbenchLayout>('side-by-side');
   const [copied, setCopied] = useState(false);
   const [codeVersion, setCodeVersion] = useState(0);
 
@@ -28,10 +27,10 @@ export default function App() {
     return initial;
   });
 
-  const [propsById, setPropsById] = useState<Record<string, PropValues>>(() => {
-    const initial: Record<string, PropValues> = {};
+  const [cssById, setCssById] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
     for (const item of COMPONENT_CATALOG) {
-      initial[item.id] = structuredClone(item.defaultProps);
+      initial[item.id] = item.cssCode;
     }
     return initial;
   });
@@ -59,21 +58,11 @@ export default function App() {
   }, [activeId, visibleComponents]);
 
   const activeCode = codeById[activeItem.id] ?? activeItem.sourceCode;
-  const activeProps = propsById[activeItem.id] ?? activeItem.defaultProps;
+  const activeCss = cssById[activeItem.id] ?? activeItem.cssCode;
 
   const compileResult = useMemo(
     () => compileTsxComponent(activeCode),
     [activeCode]
-  );
-
-  const usageSnippet = useMemo(
-    () =>
-      buildUsageSnippet(
-        activeItem.componentName,
-        activeItem.fileName,
-        activeProps
-      ),
-    [activeItem.componentName, activeItem.fileName, activeProps]
   );
 
   const handleSelectCategory = (category: ComponentCategory) => {
@@ -90,30 +79,10 @@ export default function App() {
   const handleCodeChange = (nextCode: string) => {
     setCodeById((prev) => ({ ...prev, [activeItem.id]: nextCode }));
     setCodeVersion((v) => v + 1);
-
-    const parsed = compileTsxComponent(nextCode);
-    if (parsed.defaultProps) {
-      setPropsById((prev) => ({
-        ...prev,
-        [activeItem.id]: parsed.defaultProps!,
-      }));
-    }
   };
 
-  const handlePropChange = (key: string, value: unknown) => {
-    const nextProps: PropValues = {
-      ...activeProps,
-      [key]: value,
-    };
-    setPropsById((prev) => ({ ...prev, [activeItem.id]: nextProps }));
-    setCodeById((prev) => {
-      const current = prev[activeItem.id] ?? activeItem.sourceCode;
-      return {
-        ...prev,
-        [activeItem.id]: syncDefaultPropsInSource(current, nextProps),
-      };
-    });
-    setCodeVersion((v) => v + 1);
+  const handleCssChange = (nextCss: string) => {
+    setCssById((prev) => ({ ...prev, [activeItem.id]: nextCss }));
   };
 
   const handleResetActive = () => {
@@ -121,29 +90,35 @@ export default function App() {
       ...prev,
       [activeItem.id]: activeItem.sourceCode,
     }));
-    setPropsById((prev) => ({
+    setCssById((prev) => ({
       ...prev,
-      [activeItem.id]: structuredClone(activeItem.defaultProps),
+      [activeItem.id]: activeItem.cssCode,
     }));
     setCodeVersion((v) => v + 1);
   };
 
-  const handleDownloadTsx = () => {
-    const blob = new Blob([activeCode], {
-      type: 'text/typescript;charset=utf-8',
-    });
+  const triggerDownload = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = activeItem.fileName;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadTsx = () => {
+    triggerDownload(activeCode, activeItem.fileName, 'text/typescript;charset=utf-8');
+  };
+
+  const handleDownloadCss = () => {
+    triggerDownload(activeCss, activeItem.cssFileName, 'text/css;charset=utf-8');
+  };
+
   const handleCopy = async () => {
-    const textToCopy = editorTab === 'usage' ? usageSnippet : activeCode;
+    const textToCopy = editorTab === 'css' ? activeCss : activeCode;
     try {
       await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
@@ -153,8 +128,10 @@ export default function App() {
     }
   };
 
+  const isSideBySide = layoutMode === 'side-by-side';
+
   return (
-    <div className="flex min-h-screen lg:h-screen lg:overflow-hidden flex-col bg-slate-50 text-slate-900">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-200 text-slate-900">
       <StudioTopBar
         activeCategory={activeCategory}
         onSelectCategory={handleSelectCategory}
@@ -172,63 +149,55 @@ export default function App() {
         onSelectComponent={setActiveId}
       />
 
-      {/* Main Split Workbench: Editor & Live Preview */}
-      <main className="mx-auto grid w-full max-w-[1600px] flex-1 min-h-0 grid-cols-1 lg:grid-cols-12">
-        {/* Left Pane: Editor */}
+      {/* Side-by-side 50/50 split fitting exact remaining viewport height */}
+      <main
+        className={`mx-auto w-full max-w-[1600px] flex-1 min-h-0 p-2.5 sm:p-3.5 gap-3 ${
+          isSideBySide
+            ? 'grid grid-cols-1 grid-rows-2 sm:grid-cols-2 sm:grid-rows-1 overflow-hidden'
+            : 'flex flex-col overflow-auto'
+        }`}
+      >
+        {/* Left Pane: Pure TSX & Pure CSS Editor */}
         <section
-          aria-label="Editor componente"
-          className="flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 bg-white lg:col-span-5 min-h-[480px] lg:min-h-0"
+          aria-label="Editor codice componente"
+          className={`flex flex-col overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm min-h-0 ${
+            isSideBySide ? 'h-full' : 'hidden'
+          }`}
         >
-          {/* Editor Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-slate-100 px-3 py-2 shrink-0">
             <div
               role="tablist"
-              aria-label="Modalità editor"
-              className="flex items-center gap-1 rounded-lg bg-slate-200/70 p-0.5"
+              aria-label="Schede codice"
+              className="flex items-center gap-0.5 rounded-lg bg-slate-200 p-0.5"
             >
               <button
                 type="button"
                 role="tab"
-                aria-selected={editorTab === 'code'}
-                onClick={() => setEditorTab('code')}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                  editorTab === 'code'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                aria-selected={editorTab === 'tsx'}
+                onClick={() => setEditorTab('tsx')}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  editorTab === 'tsx'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-700 hover:text-slate-950'
                 }`}
               >
                 <Code2 className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Codice TSX</span>
+                <span>React TSX</span>
               </button>
 
               <button
                 type="button"
                 role="tab"
-                aria-selected={editorTab === 'props'}
-                onClick={() => setEditorTab('props')}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                  editorTab === 'props'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                aria-selected={editorTab === 'css'}
+                onClick={() => setEditorTab('css')}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                  editorTab === 'css'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-700 hover:text-slate-950'
                 }`}
               >
-                <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Props</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={editorTab === 'usage'}
-                onClick={() => setEditorTab('usage')}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                  editorTab === 'usage'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Uso</span>
+                <Paintbrush className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>CSS</span>
               </button>
             </div>
 
@@ -236,8 +205,8 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleCopy}
-                title="Copia negli appunti"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
+                title="Copia codice negli appunti"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
               >
                 {copied ? (
                   <>
@@ -255,50 +224,43 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleResetActive}
-                title="Ripristina codice e props predefiniti"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
+                title="Ripristina TSX e CSS originali"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">Ripristina</span>
+                <span className="hidden xl:inline">Ripristina</span>
               </button>
 
               <button
                 type="button"
-                onClick={handleDownloadTsx}
-                title={`Scarica ${activeItem.fileName}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 whitespace-nowrap shrink-0 cursor-pointer"
+                onClick={editorTab === 'css' ? handleDownloadCss : handleDownloadTsx}
+                title={
+                  editorTab === 'css'
+                    ? `Scarica ${activeItem.cssFileName}`
+                    : `Scarica ${activeItem.fileName}`
+                }
+                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{activeItem.fileName}</span>
+                <span>
+                  {editorTab === 'css' ? activeItem.cssFileName : activeItem.fileName}
+                </span>
               </button>
             </div>
           </div>
 
-          {/* Active Editor Content */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            {editorTab === 'code' && (
+            {editorTab === 'tsx' ? (
               <CodeEditorPane
                 code={activeCode}
                 onChange={handleCodeChange}
                 compileError={compileResult.error}
               />
-            )}
-
-            {editorTab === 'props' && (
-              <PropsInspectorPane
-                key={activeItem.id}
-                schema={activeItem.propSchema}
-                values={activeProps}
-                onChangeProp={handlePropChange}
-              />
-            )}
-
-            {editorTab === 'usage' && (
+            ) : (
               <CodeEditorPane
-                code={usageSnippet}
-                onChange={() => {}}
+                code={activeCss}
+                onChange={handleCssChange}
                 compileError={null}
-                readOnly
               />
             )}
           </div>
@@ -307,15 +269,19 @@ export default function App() {
         {/* Right Pane: Real-time Preview */}
         <section
           aria-label="Anteprima dal vivo"
-          className="flex flex-col bg-white lg:col-span-7 min-h-[500px] lg:min-h-0"
+          className="flex flex-col overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm h-full min-h-0"
         >
           <LivePreviewPane
             item={activeItem}
+            activeCss={activeCss}
             CompiledComponent={compileResult.Component}
             compileError={compileResult.error}
-            propValues={compileResult.defaultProps ? activeProps : {}}
             codeVersion={codeVersion}
             onResetCode={handleResetActive}
+            layoutMode={layoutMode}
+            onToggleLayout={() =>
+              setLayoutMode((m) => (m === 'side-by-side' ? 'stacked' : 'side-by-side'))
+            }
           />
         </section>
       </main>

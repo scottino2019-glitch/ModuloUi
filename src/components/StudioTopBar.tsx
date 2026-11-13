@@ -23,15 +23,15 @@ export default function StudioTopBar({
   activeFileName,
 }: StudioTopBarProps) {
   return (
-    <header className="w-full border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-8 px-6 py-3.5">
+    <header className="w-full border-b border-slate-800 bg-slate-900 text-white shrink-0">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-8 px-4 sm:px-6 py-3">
         <a
           href="#top"
           onClick={(e) => {
             e.preventDefault();
             onSelectCategory('all');
           }}
-          className="font-display text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
+          className="font-display text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0"
         >
           Modulo UI
         </a>
@@ -47,10 +47,10 @@ export default function StudioTopBar({
                 key={cat.id}
                 type="button"
                 onClick={() => onSelectCategory(cat.id)}
-                className={`text-sm font-medium whitespace-nowrap shrink-0 pb-0.5 transition-colors cursor-pointer ${
+                className={`text-sm font-medium whitespace-nowrap shrink-0 pb-1 transition-colors cursor-pointer ${
                   isActive
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-slate-600 hover:text-slate-900 border-b-2 border-transparent'
+                    ? 'text-white border-b-2 border-blue-400'
+                    : 'text-slate-300 hover:text-white border-b-2 border-transparent'
                 }`}
               >
                 {cat.label}
@@ -64,9 +64,9 @@ export default function StudioTopBar({
             type="button"
             onClick={onDownload}
             title={`Scarica ${activeFileName}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            <Download className="h-4 w-4" aria-hidden="true" />
             <span>Scarica .tsx</span>
           </button>
         </div>

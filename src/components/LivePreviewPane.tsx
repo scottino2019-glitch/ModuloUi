@@ -1,27 +1,32 @@
 import React, { useState } from 'react';
-import { Monitor, RotateCcw, Smartphone, Tablet } from 'lucide-react';
-import { ComponentCatalogItem, PropValues } from '../types/componentTypes';
+import { Columns2, Monitor, RotateCcw, Rows2, Smartphone, Tablet } from 'lucide-react';
+import { ComponentCatalogItem } from '../types/componentTypes';
 import PreviewErrorBoundary from './PreviewErrorBoundary';
 
 type ViewportMode = 'desktop' | 'tablet' | 'mobile';
-type BackdropMode = 'light' | 'grid' | 'dark';
+type BackdropMode = 'grid' | 'light' | 'dark';
+export type WorkbenchLayout = 'stacked' | 'side-by-side';
 
 interface LivePreviewPaneProps {
   item: ComponentCatalogItem;
+  activeCss: string;
   CompiledComponent: React.ComponentType<Record<string, unknown>> | null;
   compileError: string | null;
-  propValues: PropValues;
   codeVersion: number;
   onResetCode: () => void;
+  layoutMode: WorkbenchLayout;
+  onToggleLayout: () => void;
 }
 
 export default function LivePreviewPane({
   item,
+  activeCss,
   CompiledComponent,
   compileError,
-  propValues,
   codeVersion,
   onResetCode,
+  layoutMode,
+  onToggleLayout,
 }: LivePreviewPaneProps) {
   const [viewport, setViewport] = useState<ViewportMode>('desktop');
   const [backdrop, setBackdrop] = useState<BackdropMode>('grid');
@@ -38,21 +43,23 @@ export default function LivePreviewPane({
     backdrop === 'dark'
       ? 'bg-slate-900'
       : backdrop === 'light'
-      ? 'bg-white'
+      ? 'bg-slate-100'
       : 'preview-grid-bg';
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      <style>{activeCss}</style>
+
       {/* Preview Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-800">
-            Anteprima in tempo reale
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-slate-100 px-4 py-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-sm font-semibold text-slate-900 whitespace-nowrap">
+            Anteprima · {item.name}
           </span>
-          <span className="hidden sm:inline text-xs text-slate-400" aria-hidden="true">
+          <span className="hidden xl:inline text-sm text-slate-400" aria-hidden="true">
             ·
           </span>
-          <span className="hidden sm:inline text-xs text-slate-500 truncate max-w-[260px]">
+          <span className="hidden xl:inline text-sm text-slate-600 truncate max-w-[300px]">
             {item.summary}
           </span>
         </div>
@@ -62,7 +69,7 @@ export default function LivePreviewPane({
           <div
             role="group"
             aria-label="Dimensione anteprima"
-            className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5"
+            className="flex items-center rounded-lg border border-slate-300 bg-white p-0.5"
           >
             <button
               type="button"
@@ -72,10 +79,10 @@ export default function LivePreviewPane({
               className={`rounded-md p-1.5 transition-colors cursor-pointer ${
                 viewport === 'desktop'
                   ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Monitor className="h-3.5 w-3.5" />
+              <Monitor className="h-4 w-4" />
             </button>
             <button
               type="button"
@@ -85,10 +92,10 @@ export default function LivePreviewPane({
               className={`rounded-md p-1.5 transition-colors cursor-pointer ${
                 viewport === 'tablet'
                   ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Tablet className="h-3.5 w-3.5" />
+              <Tablet className="h-4 w-4" />
             </button>
             <button
               type="button"
@@ -98,10 +105,10 @@ export default function LivePreviewPane({
               className={`rounded-md p-1.5 transition-colors cursor-pointer ${
                 viewport === 'mobile'
                   ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Smartphone className="h-3.5 w-3.5" />
+              <Smartphone className="h-4 w-4" />
             </button>
           </div>
 
@@ -109,12 +116,12 @@ export default function LivePreviewPane({
           <div
             role="group"
             aria-label="Sfondo anteprima"
-            className="hidden sm:flex items-center rounded-lg border border-slate-200 bg-white p-0.5 text-[11px] font-medium"
+            className="hidden sm:flex items-center rounded-lg border border-slate-300 bg-white p-0.5 text-xs font-medium"
           >
             {(
               [
                 { id: 'grid', label: 'Griglia' },
-                { id: 'light', label: 'Chiaro' },
+                { id: 'light', label: 'Neutro' },
                 { id: 'dark', label: 'Scuro' },
               ] as const
             ).map((bg) => (
@@ -124,8 +131,8 @@ export default function LivePreviewPane({
                 onClick={() => setBackdrop(bg.id)}
                 className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                   backdrop === bg.id
-                    ? 'bg-slate-100 text-slate-900 font-semibold'
-                    : 'text-slate-500 hover:text-slate-900'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {bg.label}
@@ -137,27 +144,50 @@ export default function LivePreviewPane({
             type="button"
             onClick={() => setStateNonce((n) => n + 1)}
             title="Ricarica stato interno del componente"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden md:inline">Ricarica</span>
+            <span className="hidden xl:inline">Ricarica</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggleLayout}
+            title={
+              layoutMode === 'side-by-side'
+                ? 'Espandi anteprima a tutto schermo'
+                : 'Torna a codice e anteprima affiancati'
+            }
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 cursor-pointer"
+          >
+            {layoutMode === 'side-by-side' ? (
+              <>
+                <Rows2 className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Espandi</span>
+              </>
+            ) : (
+              <>
+                <Columns2 className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Affianca</span>
+              </>
+            )}
           </button>
         </div>
       </div>
 
       {/* Preview Stage */}
       <div
-        className={`studio-scroll relative flex-1 overflow-auto p-6 md:p-8 transition-colors ${stageBgClass}`}
+        className={`studio-scroll relative flex-1 min-h-0 overflow-auto p-4 sm:p-5 transition-colors ${stageBgClass}`}
       >
         <div
           className={`mx-auto transition-all duration-200 ${frameWidthClass} ${
             viewport !== 'desktop'
-              ? 'rounded-2xl border border-slate-300/80 bg-white/40 p-3 shadow-sm'
+              ? 'rounded-2xl border border-slate-400/60 bg-white/50 p-3 shadow-md'
               : ''
           }`}
         >
           {compileError ? (
-            <div className="mx-auto max-w-lg rounded-xl border border-amber-200 bg-amber-50 p-5 text-left">
+            <div className="mx-auto max-w-lg rounded-xl border border-amber-300 bg-amber-50 p-5 text-left shadow-sm">
               <h4 className="text-sm font-semibold text-amber-950">
                 In attesa di codice TSX valido
               </h4>
@@ -173,14 +203,11 @@ export default function LivePreviewPane({
               <div
                 className={
                   item.layoutHint === 'centered-card'
-                    ? 'flex w-full justify-center py-4'
-                    : 'w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xs'
+                    ? 'flex w-full justify-center py-2'
+                    : 'w-full overflow-x-auto rounded-xl border border-slate-300 bg-white shadow-md'
                 }
               >
-                <CompiledComponent
-                  key={`${item.id}-${stateNonce}`}
-                  {...propValues}
-                />
+                <CompiledComponent key={`${item.id}-${stateNonce}`} />
               </div>
             </PreviewErrorBoundary>
           ) : null}

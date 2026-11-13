@@ -9,6 +9,7 @@
 @layer base {
   html {
     font-family: var(--font-sans);
+    font-size: 16px;
   }
 
   h1, h2, h3, h4, .font-display {
@@ -25,28 +26,27 @@
 }
 
 .preview-grid-bg {
-  background-color: #f8fafc;
+  background-color: #e2e8f0;
   background-image:
-    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, rgba(15, 23, 42, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.07) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
-/* Custom sleek scrollbars for editor & component bar */
 .studio-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .studio-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(15, 23, 42, 0.04);
 }
 
 .studio-scroll::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.45);
-  border-radius: 3px;
+  background: rgba(100, 116, 139, 0.55);
+  border-radius: 4px;
 }
 
 .studio-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.7);
+  background: rgba(71, 85, 105, 0.8);
 }
